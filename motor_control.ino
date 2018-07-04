@@ -1,38 +1,80 @@
+#include <XBOXRECV.h>
+
+#ifdef dobogusinclude
+#include <spi4teensy3.h>
+#endif
+#include <SPI.h>
+
+USB Usb;
+XBOXRECV Xbox(&Usb);
+
+
 int m2_f = 7;
 int m2_b = 6;
 int m1_b = 5;
 int m1_f = 4;
-int sensorf_trigger = 9;
-int sensorf_echo = 8;
-long distance;
-int stopCount;
-int duration;
 void setup() {
   pinMode(m2_f, OUTPUT);
   pinMode(m2_b, OUTPUT);
   pinMode(m1_b, OUTPUT);
   pinMode(m1_f, OUTPUT);
-  pinMode(sensorf_trigger,OUTPUT);
-  pinMode(sensorf_echo,INPUT);
   Serial.begin(9600); // Starts the serial communication
+ 
+
+//Controller----------
+  #if !defined(__MIPSEL__)
+  while (!Serial); // Wait for serial port to connect - used on Leonardo, Teensy and other boards with built-in USB CDC serial connection
+#endif
+  if (Usb.Init() == -1) {
+    Serial.print(F("\r\nOSC did not start"));
+    while (1); //halt
+  }
+  Serial.print(F("\r\nXbox Wireless Receiver Library Started"));
+  //-------------------
 }
 void loop() {
-//forward();
-//reverse();
-//rightTurn();
-//leftTurn();
-start();
-}
-void start(){
-  detectFSensor();
-  if (distance <= 70){stopCount++;}
-  if (stopCount >= 3){
-    stop();
-    }else{
-      forward();
+
+ Usb.Task();
+  if (Xbox.XboxReceiverConnected) {
+    for (uint8_t i = 0; i < 4; i++) {
+      if (Xbox.Xbox360Connected[i]) {
+
+          
+           Serial.print("L2: ");
+          Serial.print(Xbox.getButtonPress(L2, i));
+          Serial.print("\tR2: ");
+          Serial.println(Xbox.getButtonPress(R2, i));
+          Xbox.setRumbleOn(Xbox.getButtonPress(L2, i), Xbox.getButtonPress(R2, i), i);
+
+         if (Xbox.getButtonPress(R2, i) > 50 && Xbox.getButtonPress(L2, i) < 50){
+          //right
+          digitalWrite(m1_f, HIGH);
+          delay(50);
+          digitalWrite(m1_f, LOW);
+          
+          }else if (Xbox.getButtonPress(R2, i) < 50 && Xbox.getButtonPress(L2, i) > 50){
+            //left
+          digitalWrite(m2_f, HIGH);
+          delay(50);
+          digitalWrite(m2_f, LOW);
+            }
+
+          if (Xbox.getButtonPress(R2, i) > 50 && Xbox.getButtonPress(L2, i) > 50){
+            //forward
+            digitalWrite(m2_f, HIGH);
+            delay(25);
+            digitalWrite(m1_f, HIGH);
+            delay(25);
+            digitalWrite(m2_f, LOW);
+            digitalWrite(m1_f, LOW);
+            }
+
       }
-  
+
+    }
   }
+}
+
 void stop(){
   digitalWrite(m1_f, LOW);
   digitalWrite(m1_b, LOW);
@@ -53,41 +95,14 @@ delay(100);
 }
 void rightTurn(){
 digitalWrite(m1_f, HIGH);
-delay(100);
+delay(50);
+digitalWrite(m1_f, LOW);
 }
 void leftTurn(){
 digitalWrite(m2_f, HIGH);
-delay(100);
+delay(50);
+digitalWrite(m2_f, LOW);
 }
-void detectFSensor(){
-  ////////////
-//Getting Distance
-///////////
-// Clears the trigPin
-digitalWrite(sensorf_trigger, LOW);
-delayMicroseconds(2);
-// Sets the trigPin on HIGH state for 10 micro seconds
-digitalWrite(sensorf_trigger, HIGH);
-delayMicroseconds(10);
-digitalWrite(sensorf_trigger, LOW);
-// Reads the echoPin, returns the sound wave travel time in microseconds
-duration = pulseIn(sensorf_echo, HIGH);
-// Calculating the distance
-distance= duration*0.034/2;
-// Prints the distance on the Serial Monitor
-Serial.print("Distance: ");
-Serial.println(distance);
-if (distance <= 50){
-  //stop();
-  }
-////////////
-//Getting Distance
-///////////
-  }
-
-
-
-
 
 //this will cause left motor to turn. m1_2 backwards, m1_1 forwards
 //digitalWrite(m1_1, HIGH);
